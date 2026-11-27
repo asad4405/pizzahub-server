@@ -174,6 +174,67 @@ app.delete("/api/menu-items/:id", async (req, res) => {
 });
 //  =========================== vendor part end ========================= //
 
+
+//  =========================== admin part start ========================= //
+// admin menu data
+app.get("/api/admin/menu-items", async (req, res) => {
+    const status = req.query.status ? String(req.query.status) : "";
+    const filter = status && status !== "all" ? { status } : {};
+
+    const items = await menuItemsCollection
+        .find(filter)
+        .sort({ createdAt: -1, _id: -1 })
+        .toArray();
+
+    res.send({ success: true, items });
+});
+
+// admin status update
+app.patch("/api/admin/menu-items/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!ObjectId.isValid(id)) {
+        return res.send({ success: false, message: "Invalid menu item ID" });
+    }
+
+    const allowedAdminStatuses = ["approved", "rejected"];
+    if (!allowedAdminStatuses.includes(status)) {
+        return res.send({
+            success: false,
+            message: "Admin can only set status to approved or rejected",
+        });
+    }
+
+    const result = await menuItemsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status } }
+    );
+
+    if (result.matchedCount === 0) {
+        return res.send({ success: false, message: "Menu item not found" });
+    }
+
+    res.send({ success: true, message: `Menu item marked as ${status}!` });
+});
+// admin menu delete
+app.delete("/api/admin/menu-items/:id", async (req, res) => {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+        return res.send({ success: false, message: "Invalid menu item ID" });
+    }
+
+    const result = await menuItemsCollection.deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+        return res.send({ success: false, message: "Menu item not found" });
+    }
+
+    res.send({ success: true, message: "Menu item deleted successfully!" });
+});
+//  =========================== admin part end ========================= //
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
