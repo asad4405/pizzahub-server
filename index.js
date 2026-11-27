@@ -1,7 +1,7 @@
 import express from "express";
 import cors from 'cors';
 import 'dotenv/config';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -30,6 +30,7 @@ app.get("/", (req, res) => {
     res.send("Server Runing ...");
 });
 
+//  =========================== vendor part start ========================= //
 // vendor wise menu list
 app.get("/api/menu-items/vendor/:vendorId", async (req, res) => {
     const vendor = await usersCollection.findOne({ id: req.params.vendorId });
@@ -44,7 +45,7 @@ app.get("/api/menu-items/vendor/:vendorId", async (req, res) => {
         isPremium: vendor?.subscriptionPlan === "premium",
     });
 });
-// create menu
+// vendor create menu
 app.post("/api/menu-items", async (req, res) => {
     const { vendorId, itemName, category, description, price, location, image, imageUrl } = req.body;
 
@@ -80,6 +81,98 @@ app.post("/api/menu-items", async (req, res) => {
         ...newItem,
     });
 });
+// vendor status menu 
+app.patch("/api/menu-items/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { vendorId, status } = req.body;
+
+    if (!ObjectId.isValid(id)) {
+        return res.send({ success: false, message: "Invalid menu item ID" });
+    }
+
+    const allowedVendorStatuses = ["inactive", "pending"];
+    if (!allowedVendorStatuses.includes(status)) {
+        return res.send({ success: false, message: "Invalid status for vendor" });
+    }
+
+    if (status === "pending") {
+        const vendor = await usersCollection.findOne({ id: vendorId });
+        const isPremium = vendor?.subscriptionPlan === "premium";
+        const activeCount = await menuItemsCollection.countDocuments({
+            vendorId,
+            _id: { $ne: new ObjectId(id) },
+            status: { $in: ["pending", "approved"] },
+        });
+
+        if (!isPremium && activeCount >= 3) {
+            return res.send({ success: false, message: "Free plan limit: max 3 active items" });
+        }
+    }
+
+    const result = await menuItemsCollection.updateOne(
+        { _id: new ObjectId(id), vendorId },
+        { $set: { status } }
+    );
+
+    if (result.matchedCount === 0) {
+        return res.send({ success: false, message: "Menu item not found" });
+    }
+
+    res.send({ success: true, message: `Menu item marked as ${status}!` });
+});
+
+// vendor edit menu
+app.patch("/api/menu-items/:id", async (req, res) => {
+    const { id } = req.params;
+    const { vendorId, itemName, category, price, location, description, image, imageUrl } = req.body;
+
+    if (!ObjectId.isValid(id)) {
+        return res.send({ success: false, message: "Invalid menu item ID" });
+    }
+
+    const updatedFields = {
+        itemName,
+        category,
+        price: Number(price),
+        location,
+        description: description || "",
+        image: (image ?? imageUrl ?? "").trim(),
+        status: "pending",
+    };
+
+    const result = await menuItemsCollection.updateOne(
+        { _id: new ObjectId(id), vendorId },
+        { $set: updatedFields }
+    );
+
+    if (result.matchedCount === 0) {
+        return res.send({ success: false, message: "Menu item not found" });
+    }
+
+    res.send({ success: true, message: "Menu item updated successfully!" });
+});
+
+// vendor delete menu
+app.delete("/api/menu-items/:id", async (req, res) => {
+    const { id } = req.params;
+    const vendorId = req.body?.vendorId || req.query?.vendorId;
+
+    if (!ObjectId.isValid(id)) {
+        return res.send({ success: false, message: "Invalid menu item ID" });
+    }
+
+    const result = await menuItemsCollection.deleteOne({
+        _id: new ObjectId(id),
+        ...(vendorId ? { vendorId } : {}),
+    });
+
+    if (result.deletedCount === 0) {
+        return res.send({ success: false, message: "Menu item not found" });
+    }
+
+    res.send({ success: true, message: "Menu item deleted successfully!" });
+});
+//  =========================== vendor part end ========================= //
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
