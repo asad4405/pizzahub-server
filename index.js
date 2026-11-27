@@ -30,6 +30,48 @@ app.get("/", (req, res) => {
     res.send("Server Runing ...");
 });
 
+// =========================== website part start ========================= //
+app.get("/api/menu-items", async (req, res) => {
+    const query = {};
+
+    query.status = "approved";
+
+    if (req.query.category && req.query.category !== "all") {
+        query.category = String(req.query.category);
+    }
+
+    if (req.query.location && req.query.location !== "all") {
+        query.location = { $regex: String(req.query.location), $options: "i" };
+    }
+
+    if (req.query.search && String(req.query.search).trim() !== "") {
+        const searchTerm = String(req.query.search).trim();
+        query.$or = [
+            { itemName: { $regex: searchTerm, $options: "i" } },
+            { description: { $regex: searchTerm, $options: "i" } },
+        ];
+    }
+
+    const sortOption = {};
+    if (req.query.sort === "price_asc") {
+        sortOption.price = 1;
+    } else if (req.query.sort === "price_desc") {
+        sortOption.price = -1;
+    } else {
+        sortOption.createdAt = -1;
+        sortOption._id = -1;
+    }
+
+    const items = await menuItemsCollection
+        .find(query)
+        .sort(sortOption)
+        .toArray();
+
+    res.send({ success: true, items });
+});
+// =========================== website part end ========================= //
+
+
 //  =========================== vendor part start ========================= //
 // vendor wise menu list
 app.get("/api/menu-items/vendor/:vendorId", async (req, res) => {
