@@ -31,6 +31,7 @@ app.get("/", (req, res) => {
 });
 
 // =========================== website part start ========================= //
+//menu list
 app.get("/api/menu-items", async (req, res) => {
     const query = {};
 
@@ -68,6 +69,29 @@ app.get("/api/menu-items", async (req, res) => {
         .toArray();
 
     res.send({ success: true, items });
+});
+
+// menu item details
+app.get("/api/menu-items/:id", async (req, res) => {
+    const { id } = req.params;
+
+    const query = {
+        status: "approved",
+        ...(ObjectId.isValid(id)
+            ? { $or: [{ _id: new ObjectId(id) }, { _id: id }] }
+            : { _id: id }),
+    };
+
+    const item = await menuItemsCollection.findOne(query);
+
+    if (!item) {
+        return res.status(404).send({
+            success: false,
+            message: "Menu item not found",
+        });
+    }
+
+    res.send({ success: true, item });
 });
 // =========================== website part end ========================= //
 
