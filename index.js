@@ -25,6 +25,7 @@ const connectedClient = await connectToMongoDB();
 const db = connectedClient.db('pizzahub');
 const menuItemsCollection = db.collection("menu");
 const usersCollection = db.collection("user");
+const ordersCollection = db.collection("order");
 
 app.get("/", (req, res) => {
     res.send("Server Runing ...");
@@ -94,6 +95,58 @@ app.get("/api/menu-items/:id", async (req, res) => {
     res.send({ success: true, item });
 });
 // =========================== website part end ========================= //
+
+// =========================== customer part start ========================= //
+// create order 
+app.post("/api/orders", async (req, res) => {
+    const {
+        menuItemId,
+        itemName,
+        price,
+        vendorId,
+        vendorName,
+        deliveryDate,
+        deliveryAddress,
+        note,
+        customerId,
+        customerName,
+        customerEmail,
+        customerRole,
+    } = req.body;
+
+    if (!customerId && !customerEmail) {
+        return res.status(401).send({ success: false, message: "Login required" });
+    }
+
+    if (customerRole !== "customer") {
+        return res.status(403).send({ success: false, message: "Only customers can order" });
+    }
+
+    if (!menuItemId || !deliveryDate || !deliveryAddress) {
+        return res.status(400).send({ success: false, message: "Required fields missing" });
+    }
+
+    const newOrder = {
+        menuItemId,
+        itemName,
+        price,
+        vendorId,
+        vendorName,
+        deliveryDate,
+        deliveryAddress,
+        note: note || "",
+        customerId: customerId || null,
+        customerName: customerName || "",
+        customerEmail: customerEmail || "",
+        status: "pending",
+        createdAt: new Date(),
+    };
+
+    const result = await ordersCollection.insertOne(newOrder);
+    res.status(201).send({ success: true, order: { _id: result.insertedId, ...newOrder } });
+});
+
+// =========================== customer part end ========================= //
 
 
 //  =========================== vendor part start ========================= //
