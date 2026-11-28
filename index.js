@@ -342,6 +342,65 @@ app.delete("/api/menu-items/:id", async (req, res) => {
 
     res.send({ success: true, message: "Menu item deleted successfully!" });
 });
+
+// get orders 
+app.get("/api/orders", async (req, res) => {
+    const { vendorId, customerId, customerEmail } = req.query;
+
+    if (!vendorId && !customerId && !customerEmail) {
+        return res.send({
+            success: true,
+            orders: [],
+        });
+    }
+
+    const query = {};
+
+    if (vendorId) {
+        query.vendorId = vendorId;
+    } else if (customerId) {
+        query.customerId = customerId;
+    } else if (customerEmail) {
+        query.customerEmail = customerEmail;
+    }
+
+    const orders = await ordersCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+
+    res.send({
+        success: true,
+        orders,
+    });
+});
+
+// update order status by vendor
+app.patch("/api/orders/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowedStatuses = ["pending", "accepted", "preparing", "delivered", "cancelled"];
+
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ success: false, message: "Invalid order ID" });
+    }
+
+    if (!allowedStatuses.includes(status)) {
+        return res.status(400).send({ success: false, message: "Invalid status value" });
+    }
+
+    const result = await ordersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status, updatedAt: new Date() } }
+    );
+
+    if (result.matchedCount === 0) {
+        return res.status(404).send({ success: false, message: "Order not found" });
+    }
+
+    res.send({ success: true, message: `Order marked as ${status}` });
+});
 //  =========================== vendor part end ========================= //
 
 
