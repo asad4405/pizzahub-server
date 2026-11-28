@@ -146,6 +146,57 @@ app.post("/api/orders", async (req, res) => {
     res.status(201).send({ success: true, order: { _id: result.insertedId, ...newOrder } });
 });
 
+// get orders 
+app.get("/api/orders", async (req, res) => {
+    const { customerId, customerEmail } = req.query;
+    const query = {};
+
+    if (customerId) {
+        query.customerId = customerId;
+    } else if (customerEmail) {
+        query.customerEmail = customerEmail;
+    }
+
+    const orders = await ordersCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+
+    res.send({
+        success: true,
+        orders,
+    });
+});
+
+// cancel order customer only pending
+app.patch("/api/orders/:id/cancel", async (req, res) => {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ success: false, message: "Invalid order ID" });
+    }
+
+    const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!order) {
+        return res.status(404).send({ success: false, message: "Order not found" });
+    }
+
+    if (order.status !== "pending") {
+        return res.status(400).send({
+            success: false,
+            message: "Only pending orders can be cancelled",
+        });
+    }
+
+    await ordersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: "cancelled", updatedAt: new Date() } }
+    );
+
+    res.send({ success: true, message: "Order cancelled successfully" });
+});
+
 // =========================== customer part end ========================= //
 
 
