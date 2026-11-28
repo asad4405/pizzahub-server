@@ -197,6 +197,80 @@ app.patch("/api/orders/:id/cancel", async (req, res) => {
     res.send({ success: true, message: "Order cancelled successfully" });
 });
 
+// get & update customer profile
+app.route("/api/customer/profile")
+    .get(async (req, res) => {
+        const { email, userId } = req.query;
+
+        if (!email && !userId) {
+            return res.status(400).send({
+                success: false,
+                message: "Email or userId is required",
+            });
+        }
+
+        const filter = email
+            ? { email }
+            : ObjectId.isValid(userId)
+                ? { _id: new ObjectId(userId) }
+                : { id: userId };
+
+        const profile = await usersCollection.findOne(filter);
+
+        if (!profile) {
+            return res.status(404).send({
+                success: false,
+                message: "Customer profile not found",
+            });
+        }
+
+        res.send({
+            success: true,
+            profile,
+        });
+    })
+    .patch(async (req, res) => {
+        const { userId, email, name, phone, address, image } = req.body;
+
+        if (!userId && !email) {
+            return res.status(400).send({
+                success: false,
+                message: "User ID or email is required",
+            });
+        }
+
+        const filter = email
+            ? { email }
+            : ObjectId.isValid(userId)
+                ? { _id: new ObjectId(userId) }
+                : { id: userId };
+
+        const updateDoc = {
+            $set: {
+                name: name || "",
+                phone: phone || "",
+                address: address || "",
+                image: image || "",
+                updatedAt: new Date(),
+            },
+        };
+
+        const result = await usersCollection.updateOne(filter, updateDoc);
+
+        if (result.matchedCount === 0) {
+            return res.status(404).send({
+                success: false,
+                message: "Customer profile not found",
+            });
+        }
+
+        res.send({
+            success: true,
+            message: "Customer profile updated successfully",
+        });
+    });
+
+
 // =========================== customer part end ========================= //
 
 
@@ -401,6 +475,91 @@ app.patch("/api/orders/:id/status", async (req, res) => {
 
     res.send({ success: true, message: `Order marked as ${status}` });
 });
+
+// update vendor profile
+app.route("/api/vendor/profile")
+    .get(async (req, res) => {
+        const { email, userId } = req.query;
+
+        if (!email && !userId) {
+            return res.status(400).send({
+                success: false,
+                message: "Email or userId is required",
+            });
+        }
+
+        const filter = email
+            ? { email }
+            : ObjectId.isValid(userId)
+                ? { _id: new ObjectId(userId) }
+                : { id: userId };
+
+        const profile = await usersCollection.findOne(filter);
+
+        if (!profile) {
+            return res.status(404).send({
+                success: false,
+                message: "Vendor profile not found",
+            });
+        }
+
+        res.send({
+            success: true,
+            profile,
+        });
+    })
+    .patch(async (req, res) => {
+        const {
+            userId,
+            email,
+            name,
+            businessName,
+            phone,
+            address,
+            description,
+            image,
+        } = req.body;
+
+        if (!userId && !email) {
+            return res.status(400).send({
+                success: false,
+                message: "User ID or email is required",
+            });
+        }
+
+        const filter = email
+            ? { email }
+            : ObjectId.isValid(userId)
+                ? { _id: new ObjectId(userId) }
+                : { id: userId };
+
+        const updateDoc = {
+            $set: {
+                name: name || "",
+                businessName: businessName || "",
+                vendorName: businessName || "",
+                phone: phone || "",
+                address: address || "",
+                description: description || "",
+                image: image || "",
+                updatedAt: new Date(),
+            },
+        };
+
+        const result = await usersCollection.updateOne(filter, updateDoc);
+
+        if (result.matchedCount === 0) {
+            return res.status(404).send({
+                success: false,
+                message: "Vendor profile not found",
+            });
+        }
+
+        res.send({
+            success: true,
+            message: "Profile updated successfully",
+        });
+    });
 //  =========================== vendor part end ========================= //
 
 
@@ -530,6 +689,79 @@ app.delete("/api/orders/:id", async (req, res) => {
 
     res.send({ success: true, message: "Order deleted successfully" });
 });
+
+// get & update admin profile
+app.route("/api/admin/profile")
+    .get(async (req, res) => {
+        const { email, userId } = req.query;
+
+        if (!email && !userId) {
+            return res.status(400).send({
+                success: false,
+                message: "Email or userId is required",
+            });
+        }
+
+        const filter = email
+            ? { email }
+            : ObjectId.isValid(userId)
+                ? { _id: new ObjectId(userId) }
+                : { id: userId };
+
+        const profile = await usersCollection.findOne(filter);
+
+        if (!profile) {
+            return res.status(404).send({
+                success: false,
+                message: "Admin profile not found",
+            });
+        }
+
+        res.send({
+            success: true,
+            profile,
+        });
+    })
+    .patch(async (req, res) => {
+        const { userId, email, name, phone, address, image } = req.body;
+
+        if (!userId && !email) {
+            return res.status(400).send({
+                success: false,
+                message: "User ID or email is required",
+            });
+        }
+
+        const filter = email
+            ? { email }
+            : ObjectId.isValid(userId)
+                ? { _id: new ObjectId(userId) }
+                : { id: userId };
+
+        const updateDoc = {
+            $set: {
+                name: name || "",
+                phone: phone || "",
+                address: address || "",
+                image: image || "",
+                updatedAt: new Date(),
+            },
+        };
+
+        const result = await usersCollection.updateOne(filter, updateDoc);
+
+        if (result.matchedCount === 0) {
+            return res.status(404).send({
+                success: false,
+                message: "Admin profile not found",
+            });
+        }
+
+        res.send({
+            success: true,
+            message: "Admin profile updated successfully",
+        });
+    });
 //  =========================== admin part end ========================= //
 
 app.listen(PORT, () => {
